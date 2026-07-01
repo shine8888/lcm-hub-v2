@@ -1,0 +1,32 @@
+{
+  "name": "lcm-hub-v2",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Low Carbon Materials Hub — platform architecture (multi-agent extraction, orchestrator, LLM gateway, guardrails)",
+  "engines": {
+    "node": "20.x"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "infra:up": "docker compose -f deploy/docker-compose.yml up -d postgres rabbitmq redis minio",
+    "infra:down": "docker compose -f deploy/docker-compose.yml down",
+    "stack:up": "docker compose -f deploy/docker-compose.yml up --build",
+    "stack:down": "docker compose -f deploy/docker-compose.yml down -v",
+    "migrate": "npm run migrate --workspaces --if-present",
+    "e2e:extract": "tsx scripts/e2e/extract.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "5.5.4"
+  }
+}

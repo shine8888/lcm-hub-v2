@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ide
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# docker volumes committed accidentally
+deploy/volumes/
+
+# vercel
+.vercel
+
+# ts build info
+*.tsbuildinfo

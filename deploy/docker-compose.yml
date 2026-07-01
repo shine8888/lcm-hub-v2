@@ -1,0 +1,154 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lcm-postgres
+    ports:
+      - '5442:5432'
+    environment:
+      POSTGRES_USER: lcm
+      POSTGRES_PASSWORD: lcm
+      POSTGRES_DB: lcm
+    volumes:
+      - lcm_pg:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lcm -d lcm']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: lcm-rabbitmq
+    ports:
+      - '5675:5672'
+      - '15675:15672'
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: lcm-redis
+    ports:
+      - '6382:6379'
+    command: ['redis-server', '--maxmemory', '256mb', '--maxmemory-policy', 'allkeys-lru']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: lcm-minio
+    ports:
+      - '9002:9000'
+      - '9003:9001'
+    environment:
+      MINIO_ROOT_USER: lcm
+      MINIO_ROOT_PASSWORD: lcm-minio-secret
+    command: server /data --console-address ':9001'
+    volumes:
+      - lcm_minio:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # -- App services -------------------------------------------------
+
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: lcm-api-gateway
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    env_file: ../.env
+    environment:
+      NODE_ENV: development
+      PORT: 3010
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '3010:3010'
+
+  document-service:
+    build:
+      context: ..
+      dockerfile: services/document-service/Dockerfile
+    container_name: lcm-document-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://lcm:lcm@postgres:5432/lcm?schema=document_service
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: lcm
+      MINIO_SECRET_KEY: lcm-minio-secret
+      MINIO_BUCKET: lcm-documents
+
+  materials-service:
+    build:
+      context: ..
+      dockerfile: services/materials-service/Dockerfile
+    container_name: lcm-materials-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://lcm:lcm@postgres:5432/lcm?schema=materials_service
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+
+  orchestrator-service:
+    build:
+      context: ..
+      dockerfile: services/orchestrator-service/Dockerfile
+    container_name: lcm-orchestrator-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://lcm:lcm@postgres:5432/lcm?schema=orchestrator_service
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      REDIS_URL: redis://redis:6379
+
+  llm-gateway:
+    build:
+      context: ..
+      dockerfile: services/llm-gateway/Dockerfile
+    container_name: lcm-llm-gateway
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://lcm:lcm@postgres:5432/lcm?schema=orchestrator_service
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+
+  agent-workers:
+    build:
+      context: ..
+      dockerfile: services/agent-workers/Dockerfile
+    container_name: lcm-agent-workers
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    env_file: ../.env
+    environment:
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+
+volumes:
+  lcm_pg:
+  lcm_minio:
