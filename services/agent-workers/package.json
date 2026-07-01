@@ -1,0 +1,28 @@
+{
+  "name": "@lcm/agent-workers",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/main.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "tsx watch src/main.ts",
+    "start:prod": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lcm/base-framework": "*",
+    "@nestjs/common": "^10.4.5",
+    "@nestjs/core": "^10.4.5",
+    "@nestjs/microservices": "^10.4.5",
+    "amqplib": "^0.10.4",
+    "amqp-connection-manager": "^4.1.14",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "tsx": "^4.19.1",
+    "typescript": "5.5.4"
+  }
+}
